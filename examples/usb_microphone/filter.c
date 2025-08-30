@@ -119,7 +119,8 @@ void
 HPFilterBuffer(short *outp, const short *inp, int32_t n )
 {
     for (int i=0;i<n;i++ ){
-        outp[i] = clampto16(stepBiQuadOPT_ShortShort(stepHPFtoshort15 ( inp[i], BAT_SHIFT)));
+    //    outp[i] = clampto16(stepBiQuadOPT_ShortShort(stepHPFtoshort15 ( inp[i], BAT_SHIFT)));
+          outp[i] = inp[i];
     }
 }
 
