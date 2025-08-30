@@ -28,8 +28,6 @@ enum {
     AVOIDCLIPPING = ((1 << (FRACBITS - 12)) * 15) >> 4
 };
 
-int32_t dFIX = 0;
-int32_t ix1=0,ix2=0,iy1=0,iy2=0;
 int32_t kia2,kib0,kib1,kib2;
 
 void
@@ -92,6 +90,7 @@ inline int32_t clampto16 ( int32_t v )
     else return v;
 };
 
+int32_t dFIX = 0;
 inline int32_t stepHPFtoshort15 ( int32_t v, int32_t shift)
 {
     int32_t outFIX = ((v-2048)<<(FRACBITS - 12)) - dFIX;
@@ -100,6 +99,7 @@ inline int32_t stepHPFtoshort15 ( int32_t v, int32_t shift)
     return outFIX;
 };
 
+int32_t ix1=0,ix2=0,iy1=0,iy2=0;
 inline int32_t stepBiQuadOPT_ShortShort (const int32_t HPFvalue)
 {
     int32_t ix = HPFvalue;
@@ -119,8 +119,7 @@ void
 HPFilterBuffer(short *outp, const short *inp, int32_t n )
 {
     for (int i=0;i<n;i++ ){
-    //    outp[i] = clampto16(stepBiQuadOPT_ShortShort(stepHPFtoshort15 ( inp[i], BAT_SHIFT)));
-          outp[i] = inp[i];
+        outp[i] = clampto16(stepBiQuadOPT_ShortShort(stepHPFtoshort15 ( inp[i], BAT_SHIFT)));
     }
 }
 
