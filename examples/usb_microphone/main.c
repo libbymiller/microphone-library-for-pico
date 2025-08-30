@@ -13,8 +13,12 @@
  */
 
 #include "pico/pdm_microphone.h"
-
 #include "usb_microphone.h"
+
+// High pass filter from pipistrello / https://www.pippyg.com 
+// analogue microphone code.
+//
+#include "filter.h"
 
 // configuration
 const struct pdm_microphone_config config = {
@@ -28,6 +32,7 @@ const struct pdm_microphone_config config = {
 
 // variables
 uint16_t sample_buffer[SAMPLE_BUFFER_SIZE];
+uint16_t out_buffer[SAMPLE_BUFFER_SIZE];
 
 // callback functions
 void on_pdm_samples_ready();
@@ -43,6 +48,11 @@ int main(void)
   // initialize the USB microphone interface
   usb_microphone_init();
   usb_microphone_set_tx_ready_handler(on_usb_microphone_tx_ready);
+
+  // Initalise filter from pipistrello / https://www.pippyg.com 
+  // analogue microphone code.
+  //
+  HPFilterInit(12);
 
   while (1) {
     // run the USB microphone task continuously
@@ -66,6 +76,12 @@ void on_usb_microphone_tx_ready()
   // Callback from TinyUSB library when all data is ready
   // to be transmitted.
   //
+
+  // Apply a high pass filter.
+  //
+  HPFilterBuffer (out_buffer, sample_buffer, SAMPLE_BUFFER_SIZE);
+
   // Write local buffer to the USB microphone
-  usb_microphone_write(sample_buffer, sizeof(sample_buffer));
+  //
+  usb_microphone_write(out_buffer, sizeof(out_buffer));
 }
