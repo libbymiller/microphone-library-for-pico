@@ -71,7 +71,7 @@ typedef struct {
   /* Public */
   float LP_HZ;
   float HP_HZ;
-  uint16_t Fs;
+  uint32_t Fs;
   uint8_t In_MicChannels;
   uint8_t Out_MicChannels;
   uint8_t Decimation;
@@ -93,6 +93,9 @@ typedef struct {
 /* Exported functions ------------------------------------------------------- */
  
 void Open_PDM_Filter_Init(TPDMFilter_InitStruct *init_struct);
+void Open_PDM_Filter_8(uint8_t* data, uint16_t* data_out, uint16_t mic_gain, TPDMFilter_InitStruct *init_struct);
+void Open_PDM_Filter_16(uint8_t* data, uint16_t* data_out, uint16_t mic_gain, TPDMFilter_InitStruct *init_struct);
+void Open_PDM_Filter_32(uint8_t* data, uint16_t* data_out, uint16_t mic_gain, TPDMFilter_InitStruct *init_struct);
 void Open_PDM_Filter_64(uint8_t* data, uint16_t* data_out, uint16_t mic_gain, TPDMFilter_InitStruct *init_struct);
 void Open_PDM_Filter_128(uint8_t* data, uint16_t* data_out, uint16_t mic_gain, TPDMFilter_InitStruct *init_struct);
  

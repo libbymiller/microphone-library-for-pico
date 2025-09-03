@@ -12,6 +12,10 @@
  * https://github.com/hathach/tinyusb/tree/master/examples/device/audio_test
  */
 
+#include <stdio.h>
+#include "pico/stdlib.h"
+#include "pico/time.h"
+
 #include "pico/pdm_microphone.h"
 
 #include "usb_microphone.h"
@@ -35,6 +39,11 @@ void on_usb_microphone_tx_ready();
 
 int main(void)
 {
+  stdio_init_all();
+  printf(__FILE__ " at " __DATE__ " " __TIME__ " Started.\n");
+
+  printf("Sampling rate: %d\n", SAMPLE_RATE);
+
   // initialize and start the PDM microphone
   pdm_microphone_init(&config);
   pdm_microphone_set_samples_ready_handler(on_pdm_samples_ready);
@@ -44,7 +53,17 @@ int main(void)
   usb_microphone_init();
   usb_microphone_set_tx_ready_handler(on_usb_microphone_tx_ready);
 
-  while (1) {
+  printf("entering loop.\n");
+
+  for(uint64_t i = 0; 1; i++) {
+#if 0
+    static uint32_t lst = 0;
+    uint32_t n = to_ms_since_boot(get_absolute_time());
+    if (lst == 0 || n - lst > 1000) {
+	printf("d, ",i);
+	lst = n;
+	};
+#endif
     // run the USB microphone task continuously
     usb_microphone_task();
   }

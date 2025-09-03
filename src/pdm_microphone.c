@@ -5,6 +5,7 @@
  * 
  */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -18,7 +19,7 @@
 
 #include "pico/pdm_microphone.h"
 
-#define PDM_DECIMATION       64
+#define PDM_DECIMATION       32
 #define PDM_RAW_BUFFER_COUNT 2
 
 static struct {
@@ -37,7 +38,14 @@ static struct {
 static void pdm_dma_handler();
 
 int pdm_microphone_init(const struct pdm_microphone_config* config) {
+
+    printf("PDM: Sample rate: %u\n", config->sample_rate);
+    printf("PDM: Sample rate: %u kHz\n", config->sample_rate/1000);
+    printf("PDM: Buffer : %d\n", config->sample_buffer_size);
+    printf("PDM: Decimation: %d\n", PDM_DECIMATION);
+
     memset(&pdm_mic, 0x00, sizeof(pdm_mic));
+
     memcpy(&pdm_mic.config, config, sizeof(pdm_mic.config));
 
     if (config->sample_buffer_size % (config->sample_rate / 1000)) {
@@ -45,6 +53,7 @@ int pdm_microphone_init(const struct pdm_microphone_config* config) {
     }
 
     pdm_mic.raw_buffer_size = config->sample_buffer_size * (PDM_DECIMATION / 8);
+    printf("PDM: raw buffer after decimation: %d\n", pdm_mic.raw_buffer_size);
 
     for (int i = 0; i < PDM_RAW_BUFFER_COUNT; i++) {
         pdm_mic.raw_buffer[i] = malloc(pdm_mic.raw_buffer_size);
@@ -65,6 +74,10 @@ int pdm_microphone_init(const struct pdm_microphone_config* config) {
     uint pio_sm_offset = pio_add_program(config->pio, &pdm_microphone_data_program);
 
     float clk_div = clock_get_hz(clk_sys) / (config->sample_rate * PDM_DECIMATION * 4.0);
+
+    printf("PDM: clock hz : %u\n", clock_get_hz(clk_sys));
+    printf("PDM: sample hz: %f\n", (config->sample_rate * PDM_DECIMATION * 4.0));
+    printf("PDM: clk diov : %f\n", clk_div);
 
     pdm_microphone_data_init(
         config->pio,
@@ -93,7 +106,10 @@ int pdm_microphone_init(const struct pdm_microphone_config* config) {
         false
     );
 
+    printf("PDM: Sample rate later: %u\n", config->sample_rate);
     pdm_mic.filter.Fs = config->sample_rate;
+    printf("PDM init1: Fs later: %u == %u\n", pdm_mic.filter.Fs,config->sample_rate);
+
     pdm_mic.filter.LP_HZ = config->sample_rate / 2;
     pdm_mic.filter.HP_HZ = 10;
     pdm_mic.filter.In_MicChannels = 1;
@@ -103,6 +119,7 @@ int pdm_microphone_init(const struct pdm_microphone_config* config) {
     pdm_mic.filter.Gain = 16;
 
     pdm_mic.filter_volume = pdm_mic.filter.MaxVolume;
+
 }
 
 void pdm_microphone_deinit() {
@@ -122,6 +139,7 @@ void pdm_microphone_deinit() {
 }
 
 int pdm_microphone_start() {
+    printf("pdm_microphone_start()\n");
     irq_set_enabled(pdm_mic.dma_irq, true);
     irq_set_exclusive_handler(pdm_mic.dma_irq, pdm_dma_handler);
 
@@ -133,7 +151,11 @@ int pdm_microphone_start() {
         return -1;
     }
 
+    printf("PDM start: Sample rate: %d\n", pdm_mic.config.sample_rate);
+    printf("PDM start 1: Fs: %d\n", pdm_mic.filter.Fs);
+
     Open_PDM_Filter_Init(&pdm_mic.filter);
+    printf("PDM start 2: Fs: %d\n", pdm_mic.filter.Fs);
 
     pio_sm_set_enabled(
         pdm_mic.config.pio,
@@ -235,7 +257,9 @@ int pdm_microphone_read(int16_t* buffer, size_t samples) {
     pdm_mic.raw_buffer_read_index++;
 
     for (int i = 0; i < samples; i += filter_stride) {
-#if PDM_DECIMATION == 64
+#if PDM_DECIMATION == 32
+        Open_PDM_Filter_32(in, out, pdm_mic.filter_volume, &pdm_mic.filter);
+#elif PDM_DECIMATION == 64
         Open_PDM_Filter_64(in, out, pdm_mic.filter_volume, &pdm_mic.filter);
 #elif PDM_DECIMATION == 128
         Open_PDM_Filter_128(in, out, pdm_mic.filter_volume, &pdm_mic.filter);

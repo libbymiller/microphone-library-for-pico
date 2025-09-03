@@ -29,6 +29,7 @@
  
 /* Includes ------------------------------------------------------------------*/
  
+#include <stdio.h>
 #include "OpenPDMFilter.h"
  
  
@@ -167,7 +168,21 @@ void Open_PDM_Filter_Init(TPDMFilter_InitStruct *Param)
   int64_t sum = 0;
  
   uint8_t decimation = Param->Decimation;
- 
+
+printf("Open_PDM_Filter_Init()\n");
+
+    printf("Filter: Fs: %u Hz\n", Param->Fs);
+    printf("Filter: LP: %d Hz\n", Param->LP_HZ);
+    printf("Filter: HP: %d Hz\n", Param->HP_HZ);
+    printf("Filter: Channels: %d\n", Param->In_MicChannels);
+    printf("Filter: decimation: %d\n", Param->Decimation);
+    printf("Filter: decimation max: %d\n", DECIMATION_MAX);
+
+#ifdef USE_LUT
+    printf("Filter: LUT: YES\n");
+#else
+    printf("Filter: LUT: NO\n");
+#endif
   for (i = 0; i < SINCN; i++) {
     Param->Coef[i] = 0;
     Param->bit[i] = 0;
@@ -181,6 +196,9 @@ void Open_PDM_Filter_Init(TPDMFilter_InitStruct *Param)
   Param->HP_ALFA = (Param->HP_HZ != 0 ? (uint16_t) (Param->Fs * 256 / (2 * 3.14159 * Param->HP_HZ + Param->Fs)) : 0);
  
   Param->FilterLen = decimation * SINCN;       
+  printf("Filter: Len: %d\n", Param->FilterLen);
+
+if (decimation > 32) {
   sinc[0] = 0;
   sinc[decimation * SINCN - 1] = 0;      
   convolve(sinc1, decimation, sinc1, decimation, sinc2);
@@ -214,9 +232,40 @@ void Open_PDM_Filter_Init(TPDMFilter_InitStruct *Param)
                        ((c     ) & 0x01) * coef_p[d * 8 + 7];
   }
 #endif
+};
+}
+
+void Open_PDM_Filter_32(uint8_t* data, uint16_t* dataOut, uint16_t volume, TPDMFilter_InitStruct *Param)
+{
+  uint8_t i, data_out_index;
+  uint8_t channels = Param->In_MicChannels;
+  uint8_t data_inc = ((DECIMATION_MAX >> 5) * channels);
+
+  static uint16_t jj = 0; 
+  for (i = 0, data_out_index = 0; i < Param->Fs / 1000; i++, data_out_index += channels) {
+    uint32_t n = __builtin_popcount(((uint32_t *)data)[0]);
+    dataOut[data_out_index] = (n - 16) * 1024;
+//    dataOut[data_out_index] = jj++;
+    data += data_inc;
+  }
+}
+
+void Open_PDM_Filter_64(uint8_t* data, uint16_t* dataOut, uint16_t volume, TPDMFilter_InitStruct *Param)
+{
+  uint8_t i, data_out_index;
+  uint8_t channels = Param->In_MicChannels;
+  uint8_t data_inc = ((DECIMATION_MAX >> 4) * channels);
+
+  static uint16_t j = 0;
+  for (i = 0, data_out_index = 0; i < Param->Fs / 1000; i++, data_out_index += channels) {
+    int32_t n = __builtin_popcount(((uint32_t *)data)[0]) + __builtin_popcount( ((uint32_t *)data)[1]);
+  //  if (!j++) printf("V->(%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x)->(%d,%d)=%d\n",data[0],data[1],data[2],data[3],data[4],data[5],data[6],data[7],__builtin_popcount(((uint32_t *)data)[0]),__builtin_popcount(((uint32_t *)data)[1]),n);
+    dataOut[data_out_index] = (n - 32) * 512;   // << (16 - 6); // shift up - we can have up to 32+32=64 -> x2024 - 1024 either side null; 
+    data += data_inc;
+  }
 }
  
-void Open_PDM_Filter_64(uint8_t* data, uint16_t* dataOut, uint16_t volume, TPDMFilter_InitStruct *Param)
+void X_Open_PDM_Filter_64(uint8_t* data, uint16_t* dataOut, uint16_t volume, TPDMFilter_InitStruct *Param)
 {
   uint8_t i, data_out_index;
   uint8_t channels = Param->In_MicChannels;
@@ -232,7 +281,9 @@ void Open_PDM_Filter_64(uint8_t* data, uint16_t* dataOut, uint16_t volume, TPDMF
   uint8_t j = channels - 1;
 #endif
  
+  static uint16_t jj = 0;
   for (i = 0, data_out_index = 0; i < Param->Fs / 1000; i++, data_out_index += channels) {
+  //  if (!jj++) printf("V->(%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x)->(%d,%d)\n",data[0],data[1],data[2],data[3],data[4],data[5],data[6],data[7],__builtin_popcount(((uint32_t *)data)[0]),__builtin_popcount(((uint32_t *)data)[1]));
 #ifdef USE_LUT
     Z0 = filter_tables_64[j](data, 0);
     Z1 = filter_tables_64[j](data, 1);

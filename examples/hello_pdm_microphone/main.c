@@ -51,9 +51,11 @@ int main( void )
 {
     // initialize stdio and wait for USB CDC connect
     stdio_init_all();
+#if 0
     while (!tud_cdc_connected()) {
         tight_loop_contents();
     }
+#endif
 
     printf("hello PDM microphone\n");
 
