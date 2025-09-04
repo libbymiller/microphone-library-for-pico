@@ -19,7 +19,7 @@
 
 #include "pico/pdm_microphone.h"
 
-#define PDM_DECIMATION       32
+#define PDM_DECIMATION       16
 #define PDM_RAW_BUFFER_COUNT 2
 
 static struct {
@@ -257,14 +257,25 @@ int pdm_microphone_read(int16_t* buffer, size_t samples) {
 
     pdm_mic.raw_buffer_read_index++;
 
+#if PDM_DECIMATION == 32
     for(uint i = 0; i < samples; i++) {
-	buffer[i] = 2000 * (__builtin_popcount(*(uint32_t *)in) - 16);
+	buffer[i] = 2000 * (__builtin_popcount(*(uint32_t *)in) - 16) + 1000;
 	in += 4;
    };
+#elif PDM_DECIMATION == 16
+    for(uint i = 0; i < samples; i++) {
+	buffer[i] = 4000 * (__builtin_popcount(*(uint16_t *)in) - 8) + 2000;
+	in += 2;
+   };
+#else
+        #error "Unsupported PDM_DECIMATION value!"
+#endif
    return samples;
 
     for (int i = 0; i < samples; i += filter_stride) {
-#if PDM_DECIMATION == 32
+#if PDM_DECIMATION == 16
+        Open_PDM_Filter_16(in, out, pdm_mic.filter_volume, &pdm_mic.filter);
+#elif PDM_DECIMATION == 32
         Open_PDM_Filter_32(in, out, pdm_mic.filter_volume, &pdm_mic.filter);
 #elif PDM_DECIMATION == 64
         Open_PDM_Filter_64(in, out, pdm_mic.filter_volume, &pdm_mic.filter);
