@@ -15,6 +15,8 @@
 #include <stdio.h>
 #include "pico/stdlib.h"
 #include "pico/time.h"
+#include "hardware/clocks.h"
+
 
 #include "pico/pdm_microphone.h"
 
@@ -39,10 +41,15 @@ void on_usb_microphone_tx_ready();
 
 int main(void)
 {
+//  set_sys_clock_khz(115200, true); // try to get a nice divisor for the clock from CPU speed to 386
+//  set_sys_clock_khz(98.3039810753*1000,true);
+//  set_sys_clock_khz(99000,true);
+
   stdio_init_all();
   printf(__FILE__ " at " __DATE__ " " __TIME__ " Started.\n");
 
   printf("Sampling rate: %d\n", SAMPLE_RATE);
+
 
   // initialize and start the PDM microphone
   pdm_microphone_init(&config);
@@ -73,6 +80,11 @@ int main(void)
 
 void on_pdm_samples_ready()
 {
+#if SPEED_TEST
+  static uint16_t j = 0;
+  for(int i = 0; i < SAMPLE_BUFFER_SIZE; i++) sample_buffer[i] = j++;
+  return;
+#endif
   // Callback from library when all the samples in the library
   // internal sample buffer are ready for reading.
   //

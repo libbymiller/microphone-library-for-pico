@@ -152,10 +152,11 @@ int pdm_microphone_start() {
     }
 
     printf("PDM start: Sample rate: %d\n", pdm_mic.config.sample_rate);
-    printf("PDM start 1: Fs: %d\n", pdm_mic.filter.Fs);
+    printf("PDM Fs: %d\n", pdm_mic.filter.Fs);
+    printf("PDM IN Stride: %d\n",  (pdm_mic.filter.Fs / 1000) *  (PDM_DECIMATION / 8));
+    printf("PDM OUT Stride: %d\n",  (pdm_mic.filter.Fs / 1000));
 
     Open_PDM_Filter_Init(&pdm_mic.filter);
-    printf("PDM start 2: Fs: %d\n", pdm_mic.filter.Fs);
 
     pio_sm_set_enabled(
         pdm_mic.config.pio,
@@ -255,6 +256,12 @@ int pdm_microphone_read(int16_t* buffer, size_t samples) {
     int16_t* out = buffer;
 
     pdm_mic.raw_buffer_read_index++;
+
+    for(uint i = 0; i < samples; i++) {
+	buffer[i] = 2000 * (__builtin_popcount(*(uint32_t *)in) - 16);
+	in += 4;
+   };
+   return samples;
 
     for (int i = 0; i < samples; i += filter_stride) {
 #if PDM_DECIMATION == 32
